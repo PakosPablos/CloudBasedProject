@@ -54,12 +54,6 @@ public class YearPopulationService {
         String[] lines = csv.split("\\r?\\n");
         if (lines.length < 2) return result;
 
-        System.out.println("==== DEBUG: first CSV lines ====");
-        for (int i = 0; i < Math.min(10, lines.length); i++) {
-            System.out.println("CSV[" + i + "]: " + lines[i]);
-        }
-        System.out.println("==== END DEBUG ====");
-
         String header = lines[0];
         String[] cols = CSV_SPLIT.split(header);
 

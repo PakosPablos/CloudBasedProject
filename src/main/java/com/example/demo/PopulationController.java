@@ -44,13 +44,6 @@ public class PopulationController {
         }
 
         List<YearPopulation> result = yearPopulationService.getPopulationForYear(yearInt);
-        if (result == null || result.isEmpty()) {
-            return ResponseEntity
-                    .status(HttpStatus.NOT_FOUND)
-                    .body(Map.of(
-                            "error", "No population data available for the requested year or surrounding years."
-                    ));
-        }
 
         return ResponseEntity.ok(result);
     }
