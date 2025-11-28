@@ -13,30 +13,21 @@ import java.util.regex.Pattern;
 public class YearPopulationService {
 
     private final RestTemplate restTemplate = new RestTemplate();
-
-    // Data query URL – flat CSV with labels
     private static final String STATEC_CSV_URL =
             "https://lustat.statec.lu/rest/data/LU1,DF_B1100,1.0/.A" +
                     "?dimensionAtObservation=AllDimensions&format=csvfilewithlabels";
 
-    // Split CSV on commas that are NOT inside quotes
     private static final Pattern CSV_SPLIT =
             Pattern.compile(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)");
 
     public List<YearPopulation> getPopulationForYear(int requestedYear) {
 
-        // 1) Call Statec and get CSV as String
         String csv = restTemplate.getForObject(STATEC_CSV_URL, String.class);
-
-        // 2) Parse CSV into year -> YearPopulation
         Map<Integer, YearPopulation> yearMap = parseCsvToYearPopulation(csv);
 
-        // 3) If exact year exists -> list with 1 YearPopulation
         if (yearMap.containsKey(requestedYear)) {
             return List.of(yearMap.get(requestedYear));
         }
-
-        // 4) Otherwise find closest before & after
         Integer beforeYear = null;
         Integer afterYear = null;
 
@@ -56,8 +47,6 @@ public class YearPopulationService {
         return result;
     }
 
-    // ------------ CSV PARSING ------------
-
     private Map<Integer, YearPopulation> parseCsvToYearPopulation(String csv) {
         Map<Integer, YearPopulation> result = new HashMap<>();
         if (csv == null || csv.isEmpty()) return result;
@@ -65,14 +54,12 @@ public class YearPopulationService {
         String[] lines = csv.split("\\r?\\n");
         if (lines.length < 2) return result;
 
-        // Debug header + first lines
         System.out.println("==== DEBUG: first CSV lines ====");
         for (int i = 0; i < Math.min(10, lines.length); i++) {
             System.out.println("CSV[" + i + "]: " + lines[i]);
         }
         System.out.println("==== END DEBUG ====");
 
-        // --- 1) Header parsing ---
         String header = lines[0];
         String[] cols = CSV_SPLIT.split(header);
 
@@ -88,7 +75,7 @@ public class YearPopulationService {
                 yearIndex = i;
             } else if (upper.equals("OBS_VALUE")) {
                 valueIndex = i;
-            } else if (col.equals("Specification")) { // human-readable label: "Total males", etc.
+            } else if (col.equals("Specification")) { 
                 specIndexLabel = i;
             }
         }
@@ -101,7 +88,6 @@ public class YearPopulationService {
             return result;
         }
 
-        // --- 2) Data lines ---
         for (int li = 1; li < lines.length; li++) {
             String line = lines[li].trim();
             if (line.isEmpty()) continue;
@@ -111,15 +97,14 @@ public class YearPopulationService {
                 continue;
             }
 
-            String yearStr = cells[yearIndex].trim();      // e.g. "2015-12-31"
-            String valueStr = cells[valueIndex].trim();    // "576 200" or empty
-            String specLabel = cells[specIndexLabel].trim(); // e.g. "Total males"
+            String yearStr = cells[yearIndex].trim(); 
+            String valueStr = cells[valueIndex].trim(); 
+            String specLabel = cells[specIndexLabel].trim(); 
 
             if (yearStr.isEmpty() || specLabel.isEmpty() || valueStr.isEmpty()) {
-                continue; // skip "Not available" etc.
+                continue; 
             }
 
-            // Year is a DATE like 2015-12-31 → take first 4 chars
             String yearDigits = yearStr.substring(0, 4);
             int year;
             long value;
@@ -130,7 +115,6 @@ public class YearPopulationService {
                 continue;
             }
 
-            // --- 3) Get/create YearPopulation for that year ---
             YearPopulation yp = result.get(year);
             if (yp == null) {
                 yp = new YearPopulation();
@@ -146,25 +130,20 @@ public class YearPopulationService {
             PopulationBreakdown lux = yp.getLuxembourgers();
             PopulationBreakdown fore = yp.getForeigners();
 
-            // Normalise accents, then uppercase (handles "étrangères")
             String specNorm = Normalizer.normalize(specLabel, Normalizer.Form.NFD)
                     .replaceAll("\\p{M}", "");
-            String specUpper = specNorm.toUpperCase(); // e.g. "LUXEMBOURGISH MALES"
+            String specUpper = specNorm.toUpperCase();
 
-            // --- 4) Match the row names from your table ---
 
-            // "Total population"
             if (specUpper.startsWith("TOTAL POPULATION")) {
                 yp.setTotalPopulation(value);
                 continue;
             }
 
-            // "Population per km²" -> ignore for this assignment
             if (specUpper.startsWith("POPULATION PER KM")) {
                 continue;
             }
 
-            // "Total males" / "Total females"
             if (specUpper.startsWith("TOTAL MALES")) {
                 yp.setTotalMales(value);
                 continue;
@@ -173,8 +152,6 @@ public class YearPopulationService {
                 yp.setTotalFemales(value);
                 continue;
             }
-
-            // "Luxembourgish males/females"
             if (specUpper.contains("LUXEMBOURGH") || specUpper.contains("LUXEMBOURGISH")) {
                 if (specUpper.contains("MALE")) {
                     addToBreakdown(lux, true, false, value);
@@ -186,7 +163,6 @@ public class YearPopulationService {
                 }
             }
 
-            // "Foreign males" / "Femmes étrangères"
             if (specUpper.contains("FOREIGN")) {
                 if (specUpper.contains("MALE")) {
                     addToBreakdown(fore, true, false, value);
@@ -198,10 +174,8 @@ public class YearPopulationService {
                 continue;
             }
 
-            // other rows are ignored
         }
 
-        // --- 5) Fill missing totals from breakdowns, if possible ---
         for (YearPopulation yp : result.values()) {
             PopulationBreakdown lux = yp.getLuxembourgers();
             PopulationBreakdown fore = yp.getForeigners();
@@ -209,7 +183,6 @@ public class YearPopulationService {
             if (lux == null) lux = new PopulationBreakdown();
             if (fore == null) fore = new PopulationBreakdown();
 
-            // If total males/females missing, sum from nationality breakdowns
             if (yp.getTotalMales() == 0) {
                 long males = lux.getMales() + fore.getMales();
                 if (males > 0) yp.setTotalMales(males);
@@ -219,7 +192,6 @@ public class YearPopulationService {
                 if (females > 0) yp.setTotalFemales(females);
             }
 
-            // If total population missing, try sum of totals or males+females
             if (yp.getTotalPopulation() == 0) {
                 long totalFromNation = lux.getTotal() + fore.getTotal();
                 long totalFromSex = yp.getTotalMales() + yp.getTotalFemales();

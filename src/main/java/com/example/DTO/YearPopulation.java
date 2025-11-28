@@ -5,8 +5,6 @@ public class YearPopulation {
     private int year;
     private PopulationBreakdown foreigners;
     private PopulationBreakdown luxembourgers;
-
-    // overall totals for the year (from "Total population", "Total males", "Total females")
     private long totalPopulation;
     private long totalMales;
     private long totalFemales;
