@@ -5,7 +5,11 @@ public class YearPopulation {
     private int year;
     private PopulationBreakdown foreigners;
     private PopulationBreakdown luxembourgers;
-    private long totalPopulation; // foreigners.total + luxembourgers.total
+
+    // overall totals for the year (from "Total population", "Total males", "Total females")
+    private long totalPopulation;
+    private long totalMales;
+    private long totalFemales;
 
     public int getYear() {
         return year;
@@ -35,17 +39,18 @@ public class YearPopulation {
         this.totalPopulation = totalPopulation;
     }
 
-    // ✅ these two helper getters satisfy:
-    // "number of males" and "number of females"
     public long getTotalMales() {
-        long luxMales = luxembourgers == null ? 0 : luxembourgers.getMales();
-        long forMales = foreigners == null ? 0 : foreigners.getMales();
-        return luxMales + forMales;
+        return totalMales;
+    }
+    public void setTotalMales(long totalMales) {
+        this.totalMales = totalMales;
     }
 
     public long getTotalFemales() {
-        long luxFemales = luxembourgers == null ? 0 : luxembourgers.getFemales();
-        long forFemales = foreigners == null ? 0 : foreigners.getFemales();
-        return luxFemales + forFemales;
+        return totalFemales;
+    }
+    public void setTotalFemales(long totalFemales) {
+        this.totalFemales = totalFemales;
     }
 }
+
